@@ -2,17 +2,17 @@ require("dotenv").config();
 
 const express = require("express");
 const axios = require("axios");
-const app = express();
-
 const NodeCache = require("node-cache");
+
+const app = express();
 const cache = new NodeCache({ stdTTL: 600 }); // 10분 캐시
 
 const clientId = process.env.NAVER_CLIENT_ID;
 const clientSecret = process.env.NAVER_CLIENT_SECRET;
-const port = process.env.PORT || 3000;
 
-app.get("/books/:query", async (req, res) => {
-  if (!req.params.query) {
+module.exports = app.get("/books/:query", async (req, res) => {
+  const query = req.params.query.trim(); // 공백 제거
+  if (!query) {
     return res.status(400).json({ error: "Query is required" });
   }
 
@@ -20,8 +20,8 @@ app.get("/books/:query", async (req, res) => {
     return res.status(500).json({ error: "Client ID and Secret are required" });
   }
 
-  const key = `books_${req.params.query}`;
-  const cached = cache.get(key);
+  const cacheKey = `books_${query.toLowerCase()}`; // 대소문자 무시
+  const cached = cache.get(cacheKey);
   if (cached) {
     return res.json(cached);
   }
@@ -31,9 +31,9 @@ app.get("/books/:query", async (req, res) => {
       "https://openapi.naver.com/v1/search/book.json",
       {
         params: {
-          query: req.params.query,
-          display: 10, // Number of results (max 100)
-          start: 1, // Start position
+          query,
+          display: 10,
+          start: 1,
         },
         headers: {
           "X-Naver-Client-Id": clientId,
@@ -41,14 +41,10 @@ app.get("/books/:query", async (req, res) => {
         },
       }
     );
-    cache.set(key, response.data);
+    cache.set(cacheKey, response.data);
     res.json(response.data);
   } catch (error) {
-    console.error(error);
+    console.error(`Error fetching data for query "${query}":`, error.message);
     res.status(500).json({ error: "Failed to fetch book data" });
   }
-});
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
 });
