@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const express = require("express");
 const axios = require("axios");
 const NodeCache = require("node-cache");
@@ -10,8 +9,15 @@ const cache = new NodeCache({ stdTTL: 600 }); // 10분 캐시
 const clientId = process.env.NAVER_CLIENT_ID;
 const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
-module.exports = app.get("/books/:query", async (req, res) => {
-  const query = req.params.query.trim(); // 공백 제거
+app.get("/", (req, res) => {
+  res.json({
+    message:
+      "Welcome to the Book Server! Use /books/:query to search for books.",
+  });
+});
+
+app.get("/books/:query", async (req, res) => {
+  const query = req.params.query.trim();
   if (!query) {
     return res.status(400).json({ error: "Query is required" });
   }
@@ -20,7 +26,7 @@ module.exports = app.get("/books/:query", async (req, res) => {
     return res.status(500).json({ error: "Client ID and Secret are required" });
   }
 
-  const cacheKey = `books_${query.toLowerCase()}`; // 대소문자 무시
+  const cacheKey = `books_${query.toLowerCase()}`;
   const cached = cache.get(cacheKey);
   if (cached) {
     return res.json(cached);
@@ -48,3 +54,5 @@ module.exports = app.get("/books/:query", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch book data" });
   }
 });
+
+module.exports = app;
